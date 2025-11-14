@@ -453,6 +453,73 @@
         #clear-filter:hover {
             background-color: #7f8c8d;
         }
+
+        /* Pagination Styles */
+        .pagination-container {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            gap: 10px;
+            margin-top: 20px;
+            padding: 15px;
+            background-color: white;
+            border-radius: 8px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+
+        .pagination-btn {
+            padding: 8px 12px;
+            background-color: #3498db;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+        }
+
+        .pagination-btn:hover:not(:disabled) {
+            background-color: #2980b9;
+        }
+
+        .pagination-btn:disabled {
+            background-color: #bdc3c7;
+            cursor: not-allowed;
+        }
+
+        .page-numbers {
+            display: flex;
+            gap: 5px;
+        }
+
+        .page-number {
+            padding: 8px 12px;
+            background-color: #ecf0f1;
+            border: 1px solid #bdc3c7;
+            border-radius: 4px;
+            cursor: pointer;
+        }
+
+        .page-number.active {
+            background-color: #3498db;
+            color: white;
+            border-color: #3498db;
+        }
+
+        .page-number:hover:not(.active) {
+            background-color: #d5dbdb;
+        }
+
+        .rows-per-page {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            margin-left: auto;
+        }
+
+        .rows-per-page select {
+            padding: 6px 10px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+        }
     </style>
 </head>
 <body>
@@ -506,7 +573,7 @@
 
         <div class="status-bar">
             <span id="visible-columns-count">8 columns visible</span>
-            <span id="total-rows-count">12 rows</span>
+            <span id="total-rows-count">0 rows</span>
             <span id="import-status">Ready to import</span>
         </div>
 
@@ -525,7 +592,7 @@
                     </tr>
                 </thead>
                 <tbody id="table-body">
-                    <!-- Monthly rows will be populated by JavaScript -->
+                    <!-- Data rows will be populated by JavaScript -->
                 </tbody>
                 <tfoot>
                     <tr id="input-row" class="input-row">
@@ -535,12 +602,32 @@
             </table>
         </div>
 
+        <!-- Pagination Section -->
+        <div class="pagination-container">
+            <button id="first-page" class="pagination-btn">First</button>
+            <button id="prev-page" class="pagination-btn">Previous</button>
+            
+            <div class="page-numbers" id="page-numbers">
+                <!-- Page numbers will be populated by JavaScript -->
+            </div>
+            
+            <button id="next-page" class="pagination-btn">Next</button>
+            <button id="last-page" class="pagination-btn">Last</button>
+            
+            <div class="rows-per-page">
+                <label for="rows-per-page-select">Rows per page:</label>
+                <select id="rows-per-page-select">
+                    <option value="10">10</option>
+                    <option value="25">25</option>
+                    <option value="50">50</option>
+                    <option value="100">100</option>
+                </select>
+            </div>
+        </div>
+
         <div class="import-export-container">
             <div class="import-controls">
-                <label for="import-value">Consumer Number:</label>
-                <input type="text" id="import-value" placeholder="Enter consumer number">
-
-                <button id="import-data">Import All Months Data</button>
+                <button id="import-data">Import Data from Theft Info File</button>
             </div>
 
             <button id="export-data">Export to Excel</button>
@@ -615,22 +702,18 @@
         // GitHub Repository URL
         const GITHUB_REPO_URL = "https://bu0965.github.io/Theft_Of_Energy/";
 
-        // Generate months in format 202501, 202502, etc.
-        function generateMonths() {
-            const months = [];
-            const currentYear = new Date().getFullYear();
-            for (let i = 1; i <= 12; i++) {
-                const month = i < 10 ? `0${i}` : `${i}`;
-                months.push(`${currentYear}${month}`);
-            }
-            return months;
-        }
+        // Pagination variables
+        let currentPage = 1;
+        let rowsPerPage = 10;
+        let totalRows = 0;
+        let allDataRows = [];
 
         // Update status bar
         function updateStatusBar() {
+            const rowCount = allDataRows.length;
             document.getElementById('visible-columns-count').textContent =
                 `${visibleColumns.length} columns visible`;
-            document.getElementById('total-rows-count').textContent = '12 rows';
+            document.getElementById('total-rows-count').textContent = `${rowCount} rows`;
         }
 
         // Show notification
@@ -687,7 +770,7 @@
             } else {
                 container.classList.remove('loading');
                 importButton.disabled = false;
-                importButton.textContent = 'Import All Months Data';
+                importButton.textContent = 'Import Data from Theft Info File';
             }
         }
 
@@ -753,27 +836,9 @@
                 }
             });
 
-            // Generate 12 monthly rows
-            const months = generateMonths();
+            // Add input row at the bottom
             const leafColumns = getAllLeafColumns();
             
-            months.forEach(month => {
-                const row = document.createElement('tr');
-                row.className = 'month-row';
-                row.dataset.month = month;
-
-                // Add empty cells for each leaf column
-                leafColumns.forEach(column => {
-                    const cell = document.createElement('td');
-                    cell.dataset.column = column;
-                    cell.textContent = getSampleData(column, month);
-                    row.appendChild(cell);
-                });
-
-                tableBody.appendChild(row);
-            });
-
-            // Add input row at the bottom
             // Add input cells for each leaf column
             leafColumns.forEach(column => {
                 const inputCell = document.createElement('td');
@@ -787,34 +852,6 @@
 
             updateStatusBar();
             updateImportStatus('Ready to import');
-        }
-
-        // Generate sample data for demonstration
-        function getSampleData(column, month) {
-            // Sample data for demonstration
-            const sampleData = {
-                "Sr No": "1",
-                "Section": ["Anewadi", "Karhar", "Kudal", "Medha", "Tapola"][Math.floor(Math.random() * 5)],
-                "Date": `${month.substring(4,6)}/${month.substring(0,4)}`,
-                "Consumer No": "123456",
-                "PC": "PC001",
-                "Name of the Consumer": "Sample Consumer",
-                "U/s": ["126", "135", "Plain"][Math.floor(Math.random() * 3)],
-                "Units": "100",
-                "Assessment Details-Amount": "5000",
-                "Assessment Details-Paid Amt": "4000",
-                "Assessment Details-Rcpt No": "R001",
-                "Assessment Details-Rcpt Date": "01/01/2024",
-                "Compounding Details-Amount": "2000",
-                "Compounding Details-Paid Amt": "1500",
-                "Compounding Details-Rcpt No": "R002",
-                "Compounding Details-Rcpt Date": "02/01/2024",
-                "B80 Details-ID": "B80001",
-                "B80 Details-Date": "03/01/2024",
-                "Remark": "Sample remark"
-            };
-            
-            return sampleData[column] || "";
         }
 
         // Initialize column modal
@@ -870,17 +907,16 @@
             const fyFilter = document.getElementById('fy-filter').value;
             const usFilter = document.getElementById('us-filter').value;
 
-            const rows = document.querySelectorAll('#table-body tr');
-            let visibleRows = 0;
+            const rows = allDataRows;
+            let filteredRows = [];
 
             rows.forEach(row => {
                 let showRow = true;
-                const cells = row.querySelectorAll('td');
 
                 // Apply date filter
                 if (dateFrom || dateTo) {
-                    const dateCell = Array.from(cells).find(cell => cell.dataset.column === 'Date');
-                    if (dateCell) {
+                    const dateCell = row.querySelector('td[data-column="Date"]');
+                    if (dateCell && dateCell.textContent) {
                         const cellDate = new Date(dateCell.textContent.split('/').reverse().join('-'));
                         const fromDate = dateFrom ? new Date(dateFrom) : null;
                         const toDate = dateTo ? new Date(dateTo) : null;
@@ -893,7 +929,7 @@
 
                 // Apply section filter
                 if (sectionFilter && showRow) {
-                    const sectionCell = Array.from(cells).find(cell => cell.dataset.column === 'Section');
+                    const sectionCell = row.querySelector('td[data-column="Section"]');
                     if (sectionCell && sectionCell.textContent !== sectionFilter) {
                         showRow = false;
                     }
@@ -901,7 +937,7 @@
 
                 // Apply FY filter
                 if (fyFilter && showRow) {
-                    const fyCell = Array.from(cells).find(cell => cell.dataset.column === 'FY');
+                    const fyCell = row.querySelector('td[data-column="FY"]');
                     if (fyCell && !fyCell.textContent.includes(fyFilter)) {
                         showRow = false;
                     }
@@ -909,23 +945,21 @@
 
                 // Apply U/s filter
                 if (usFilter && showRow) {
-                    const usCell = Array.from(cells).find(cell => cell.dataset.column === 'U/s');
+                    const usCell = row.querySelector('td[data-column="U/s"]');
                     if (usCell && usCell.textContent !== usFilter) {
                         showRow = false;
                     }
                 }
 
-                // Show/hide row based on filter results
+                // Add to filtered rows if it passes all filters
                 if (showRow) {
-                    row.style.display = '';
-                    visibleRows++;
-                } else {
-                    row.style.display = 'none';
+                    filteredRows.push(row);
                 }
             });
 
-            document.getElementById('total-rows-count').textContent = `${visibleRows} rows`;
-            showNotification(`Filter applied. ${visibleRows} rows match your criteria.`);
+            // Update the table with filtered rows
+            updateTableWithData(filteredRows);
+            showNotification(`Filter applied. ${filteredRows.length} rows match your criteria.`);
         }
 
         // Clear all filters
@@ -936,12 +970,8 @@
             document.getElementById('fy-filter').value = '';
             document.getElementById('us-filter').value = '';
 
-            const rows = document.querySelectorAll('#table-body tr');
-            rows.forEach(row => {
-                row.style.display = '';
-            });
-
-            document.getElementById('total-rows-count').textContent = `${rows.length} rows`;
+            // Reset to all data
+            updateTableWithData(allDataRows);
             showNotification('Filters cleared.');
         }
 
@@ -971,20 +1001,15 @@
                 exportData.push(mainHeaders);
 
                 // Add data rows
-                const tableBody = document.getElementById('table-body');
-                const rows = tableBody.querySelectorAll('tr');
+                allDataRows.forEach(row => {
+                    const rowData = [];
+                    const cells = row.querySelectorAll('td');
 
-                rows.forEach(row => {
-                    if (row.style.display !== 'none') {
-                        const rowData = [];
-                        const cells = row.querySelectorAll('td');
+                    cells.forEach(cell => {
+                        rowData.push(cell.textContent || '');
+                    });
 
-                        cells.forEach(cell => {
-                            rowData.push(cell.textContent || '');
-                        });
-
-                        exportData.push(rowData);
-                    }
+                    exportData.push(rowData);
                 });
 
                 // Create worksheet
@@ -994,19 +1019,13 @@
                 XLSX.utils.book_append_sheet(wb, ws, 'Data');
 
                 // Generate Excel file and trigger download
-                XLSX.writeFile(wb, `customer_data_${document.getElementById('import-value').value || 'export'}.xlsx`);
+                XLSX.writeFile(wb, `theft_energy_data_export.xlsx`);
 
                 showNotification('Data exported successfully!');
             } catch (error) {
                 console.error('Export error:', error);
                 showNotification('Error exporting data: ' + error.message, true);
             }
-        }
-
-        // Extract month from filename
-        function extractMonthFromFilename(filename) {
-            const match = filename.match(/_(\d{6})\./);
-            return match ? match[1] : null;
         }
 
         // Fetch file from GitHub repository
@@ -1028,128 +1047,234 @@
             }
         }
 
-        // Get list of files from GitHub repository
-        async function getFilesFromGitHub() {
-            try {
-                const excelFiles = [
-                    { name: "Theft Info_Web_0965.xls", path: "Theft Info_Web_0965.xls" },
-                ];
-
-                return excelFiles;
-            } catch (error) {
-                console.error('Error getting files from GitHub:', error);
-                throw error;
-            }
-        }
-
-        // Import data from all Excel files in GitHub repository
-        async function importAllMonthsDataFromGitHub(customerNumber) {
+        // Import data from Theft Info file
+        async function importDataFromTheftInfoFile() {
             try {
                 setLoadingState(true);
-                updateProgress(0, 'Fetching file list from GitHub...');
+                updateProgress(0, 'Fetching Theft Info file from GitHub...');
 
-                const files = await getFilesFromGitHub();
+                const fileName = "Theft Info_Web_0965.xls";
+                
+                updateProgress(20, 'Processing Theft Info file...');
 
-                if (files.length === 0) {
-                    showNotification('No Excel files found in the repository', true);
-                    updateImportStatus('No Excel files found');
+                const data = await fetchFileFromGitHub(fileName);
+                const workbook = XLSX.read(data, { type: 'array' });
+                const worksheet = workbook.Sheets[workbook.SheetNames[0]];
+                const jsonData = XLSX.utils.sheet_to_json(worksheet, { header: 1 });
+
+                if (jsonData.length <= 1) {
+                    showNotification('No data found in Theft Info file', true);
+                    updateImportStatus('No data found');
                     setLoadingState(false);
                     return;
                 }
 
-                updateProgress(10, `Found ${files.length} Excel files`);
+                updateProgress(50, 'Processing data rows...');
 
-                let processedFiles = 0;
-                let foundData = false;
+                const headers = jsonData[0];
                 const leafColumns = getAllLeafColumns();
 
-                for (const file of files) {
-                    try {
-                        const month = extractMonthFromFilename(file.name);
+                // Create a mapping between our column names and the Excel file headers
+                const columnMapping = createColumnMapping(headers, leafColumns);
 
-                        if (!month) {
-                            processedFiles++;
-                            updateProgress(Math.round((processedFiles / files.length) * 90) + 10, `Skipping ${file.name}`);
-                            continue;
+                // Create data rows
+                allDataRows = [];
+                let rowCount = 0;
+                
+                for (let i = 1; i < jsonData.length; i++) {
+                    const rowData = jsonData[i];
+                    if (!rowData || rowData.length === 0) continue;
+
+                    const row = document.createElement('tr');
+                    
+                    // Add cells for each leaf column
+                    leafColumns.forEach(leafColumn => {
+                        const cell = document.createElement('td');
+                        cell.dataset.column = leafColumn;
+                        
+                        const dataIndex = columnMapping[leafColumn];
+                        if (dataIndex !== undefined && rowData[dataIndex] !== undefined) {
+                            cell.textContent = rowData[dataIndex];
+                        } else {
+                            cell.textContent = ''; // Empty if no data found
                         }
+                        
+                        row.appendChild(cell);
+                    });
 
-                        updateProgress(Math.round((processedFiles / files.length) * 90) + 10, `Processing ${file.name}`);
-
-                        const data = await fetchFileFromGitHub(file.path);
-                        const workbook = XLSX.read(data, { type: 'array' });
-                        const worksheet = workbook.Sheets[workbook.SheetNames[0]];
-                        const jsonData = XLSX.utils.sheet_to_json(worksheet, { header: 1 });
-
-                        if (jsonData.length > 0) {
-                            const headers = jsonData[0];
-                            const consumerNumberIndex = 23;
-
-                            let customerRow = null;
-                            for (let i = 1; i < jsonData.length; i++) {
-                                const rowData = jsonData[i];
-                                if (rowData && rowData[consumerNumberIndex] == customerNumber) {
-                                    customerRow = rowData;
-                                    break;
-                                }
-                            }
-
-                            if (customerRow) {
-                                const tableBody = document.getElementById('table-body');
-                                const targetRow = tableBody.querySelector(`tr[data-month="${month}"]`);
-
-                                if (targetRow) {
-                                    const cells = targetRow.querySelectorAll('td');
-
-                                    // Update data cells based on leaf columns
-                                    leafColumns.forEach((leafColumn, cellIndex) => {
-                                        // Find the main column and sub column
-                                        let columnName = leafColumn;
-                                        let subColumnName = null;
-                                        
-                                        // Check if this is a sub-column
-                                        Object.keys(columnStructure).forEach(mainCol => {
-                                            const config = columnStructure[mainCol];
-                                            if (config.hasSubColumns && leafColumn.startsWith(mainCol)) {
-                                                columnName = mainCol;
-                                                subColumnName = leafColumn.replace(`${mainCol}-`, '');
-                                            }
-                                        });
-
-                                        const columnIndex = headers.indexOf(columnName);
-                                        if (columnIndex !== -1 && customerRow[columnIndex] !== undefined) {
-                                            cells[cellIndex].textContent = customerRow[columnIndex];
-                                        }
-                                    });
-
-                                    highlightRow(targetRow);
-                                    foundData = true;
-                                }
-                            }
-                        }
-                    } catch (error) {
-                        console.error(`Error processing ${file.name}:`, error);
+                    allDataRows.push(row);
+                    rowCount++;
+                    
+                    // Update progress
+                    if (i % 10 === 0) {
+                        updateProgress(50 + Math.round((i / jsonData.length) * 40), `Processed ${i} rows`);
                     }
-
-                    processedFiles++;
-                    updateProgress(Math.round((processedFiles / files.length) * 90) + 10, `Processed ${processedFiles}/${files.length} files`);
                 }
 
                 setLoadingState(false);
                 updateProgress(100, 'Import complete');
 
-                if (foundData) {
-                    showNotification(`Data imported for customer ${customerNumber} across all months!`);
-                    updateImportStatus(`Data imported for ${customerNumber}`);
-                } else {
-                    showNotification(`No data found for customer ${customerNumber} in any files`, true);
-                    updateImportStatus('No data found');
-                }
+                // Update table with imported data
+                updateTableWithData(allDataRows);
+                
+                showNotification(`Successfully imported ${rowCount} records from Theft Info file!`);
+                updateImportStatus(`Imported ${rowCount} records`);
+                
+                updateStatusBar();
             } catch (error) {
-                console.error('Error importing data from GitHub:', error);
+                console.error('Error importing data from Theft Info file:', error);
                 showNotification('Error importing data: ' + error.message, true);
                 updateImportStatus('Import failed');
                 setLoadingState(false);
             }
+        }
+
+        // Create column mapping for Excel headers
+        function createColumnMapping(headers, leafColumns) {
+            const columnMapping = {};
+            
+            // Define expected header patterns for sub-columns
+            const subColumnPatterns = {
+                "Assessment Details-Amount": ["Assessment Amount", "Assessment Amt", "Assess Amount"],
+                "Assessment Details-Paid Amt": ["Assessment Paid", "Assess Paid", "Paid Assessment"],
+                "Assessment Details-Rcpt No": ["Assessment Receipt", "Assess Receipt", "Assessment Rcpt"],
+                "Assessment Details-Rcpt Date": ["Assessment Date", "Assess Date", "Assessment Receipt Date"],
+                "Compounding Details-Amount": ["Compounding Amount", "Compound Amount", "Comp Amt"],
+                "Compounding Details-Paid Amt": ["Compounding Paid", "Compound Paid", "Comp Paid"],
+                "Compounding Details-Rcpt No": ["Compounding Receipt", "Compound Receipt", "Comp Rcpt"],
+                "Compounding Details-Rcpt Date": ["Compounding Date", "Compound Date", "Comp Receipt Date"],
+                "B80 Details-ID": ["B80 ID", "B80 No", "B80 Number"],
+                "B80 Details-Date": ["B80 Date", "B80 Issued Date"]
+            };
+
+            leafColumns.forEach(leafColumn => {
+                let foundIndex = -1;
+                
+                // Check if this is a sub-column with predefined patterns
+                if (subColumnPatterns[leafColumn]) {
+                    const patterns = subColumnPatterns[leafColumn];
+                    for (const pattern of patterns) {
+                        foundIndex = headers.findIndex(header => 
+                            header && header.toString().trim().toLowerCase().includes(pattern.toLowerCase())
+                        );
+                        if (foundIndex !== -1) break;
+                    }
+                }
+                
+                // If not found with patterns, try direct matching
+                if (foundIndex === -1) {
+                    foundIndex = headers.findIndex(header => {
+                        if (!header) return false;
+                        const headerStr = header.toString().trim().toLowerCase();
+                        const leafColumnStr = leafColumn.toLowerCase();
+                        
+                        // For sub-columns, check if header contains both main and sub column
+                        if (leafColumn.includes('-')) {
+                            const [mainCol, subCol] = leafColumn.split('-');
+                            return headerStr.includes(mainCol.toLowerCase()) && 
+                                   headerStr.includes(subCol.toLowerCase());
+                        }
+                        
+                        // For regular columns, check exact or partial match
+                        return headerStr === leafColumnStr || headerStr.includes(leafColumnStr);
+                    });
+                }
+                
+                // If still not found, try fuzzy matching for common variations
+                if (foundIndex === -1) {
+                    foundIndex = headers.findIndex(header => {
+                        if (!header) return false;
+                        const headerStr = header.toString().trim().toLowerCase();
+                        
+                        // Common variations mapping
+                        const variations = {
+                            "sr no": ["sno", "serial", "number"],
+                            "consumer no": ["consumer number", "cust no", "customer no"],
+                            "name of the consumer": ["consumer name", "customer name", "name"],
+                            "u/s": ["section", "under section"],
+                            "units": ["unit", "kwh", "consumption"]
+                        };
+                        
+                        if (variations[leafColumn.toLowerCase()]) {
+                            return variations[leafColumn.toLowerCase()].some(variation => 
+                                headerStr.includes(variation)
+                            );
+                        }
+                        
+                        return false;
+                    });
+                }
+                
+                if (foundIndex !== -1) {
+                    columnMapping[leafColumn] = foundIndex;
+                    console.log(`Mapped "${leafColumn}" to header "${headers[foundIndex]}" at index ${foundIndex}`);
+                } else {
+                    console.warn(`Could not find mapping for column: ${leafColumn}`);
+                }
+            });
+            
+            return columnMapping;
+        }
+
+        // Update table with data and apply pagination
+        function updateTableWithData(dataRows) {
+            const tableBody = document.getElementById('table-body');
+            tableBody.innerHTML = '';
+            
+            totalRows = dataRows.length;
+            
+            // Calculate pagination
+            const startIndex = (currentPage - 1) * rowsPerPage;
+            const endIndex = Math.min(startIndex + rowsPerPage, totalRows);
+            
+            // Add rows for current page
+            for (let i = startIndex; i < endIndex; i++) {
+                if (dataRows[i]) {
+                    tableBody.appendChild(dataRows[i].cloneNode(true));
+                }
+            }
+            
+            // Update pagination controls
+            updatePagination();
+        }
+
+        // Update pagination controls
+        function updatePagination() {
+            const totalPages = Math.ceil(totalRows / rowsPerPage);
+            const pageNumbersContainer = document.getElementById('page-numbers');
+            pageNumbersContainer.innerHTML = '';
+            
+            // Previous and First buttons
+            document.getElementById('first-page').disabled = currentPage === 1;
+            document.getElementById('prev-page').disabled = currentPage === 1;
+            
+            // Next and Last buttons
+            document.getElementById('next-page').disabled = currentPage === totalPages;
+            document.getElementById('last-page').disabled = currentPage === totalPages;
+            
+            // Page numbers
+            const maxVisiblePages = 5;
+            let startPage = Math.max(1, currentPage - Math.floor(maxVisiblePages / 2));
+            let endPage = Math.min(totalPages, startPage + maxVisiblePages - 1);
+            
+            // Adjust if we're near the end
+            if (endPage - startPage + 1 < maxVisiblePages) {
+                startPage = Math.max(1, endPage - maxVisiblePages + 1);
+            }
+            
+            for (let i = startPage; i <= endPage; i++) {
+                const pageNumber = document.createElement('div');
+                pageNumber.className = `page-number ${i === currentPage ? 'active' : ''}`;
+                pageNumber.textContent = i;
+                pageNumber.addEventListener('click', () => {
+                    currentPage = i;
+                    updateTableWithData(allDataRows);
+                });
+                pageNumbersContainer.appendChild(pageNumber);
+            }
+            
+            // Update status
+            document.getElementById('total-rows-count').textContent = `${totalRows} rows (Page ${currentPage} of ${totalPages})`;
         }
 
         // Modal functions
@@ -1182,19 +1307,46 @@
         document.getElementById('export-data').addEventListener('click', exportToExcel);
 
         document.getElementById('import-data').addEventListener('click', () => {
-            const customerNumber = document.getElementById('import-value').value.trim();
-
-            if (!customerNumber) {
-                showNotification('Please enter a customer number', true);
-                return;
-            }
-
-            importAllMonthsDataFromGitHub(customerNumber);
+            importDataFromTheftInfoFile();
         });
 
         // Filter event listeners
         document.getElementById('apply-filter').addEventListener('click', applyFilters);
         document.getElementById('clear-filter').addEventListener('click', clearFilters);
+
+        // Pagination event listeners
+        document.getElementById('first-page').addEventListener('click', () => {
+            currentPage = 1;
+            updateTableWithData(allDataRows);
+        });
+
+        document.getElementById('prev-page').addEventListener('click', () => {
+            if (currentPage > 1) {
+                currentPage--;
+                updateTableWithData(allDataRows);
+            }
+        });
+
+        document.getElementById('next-page').addEventListener('click', () => {
+            const totalPages = Math.ceil(totalRows / rowsPerPage);
+            if (currentPage < totalPages) {
+                currentPage++;
+                updateTableWithData(allDataRows);
+            }
+        });
+
+        document.getElementById('last-page').addEventListener('click', () => {
+            const totalPages = Math.ceil(totalRows / rowsPerPage);
+            currentPage = totalPages;
+            updateTableWithData(allDataRows);
+        });
+
+        // Rows per page change listener
+        document.getElementById('rows-per-page-select').addEventListener('change', (e) => {
+            rowsPerPage = parseInt(e.target.value);
+            currentPage = 1;
+            updateTableWithData(allDataRows);
+        });
 
         // Close modal when clicking outside
         window.addEventListener('click', (event) => {
@@ -1210,5 +1362,4 @@
         });
     </script>
 </body>
-
 </html>
