@@ -1,0 +1,1224 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Theft of Energy Register</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+    <style>
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        }
+
+        body {
+            padding: 20px;
+            background-color: #f0f2f5;
+            color: #333;
+        }
+
+        .container {
+            max-width: 100%;
+            margin: 0 auto;
+        }
+
+        header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+            padding: 15px 20px;
+            background-color: #2c3e50;
+            color: white;
+            border-radius: 8px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+
+        h1 {
+            font-size: 24px;
+            font-weight: 600;
+        }
+
+        .controls {
+            display: flex;
+            gap: 10px;
+        }
+
+        button {
+            padding: 10px 16px;
+            background-color: #3498db;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 14px;
+            font-weight: 500;
+            transition: background-color 0.2s;
+        }
+
+        button:hover {
+            background-color: #2980b9;
+        }
+
+        button:disabled {
+            background-color: #95a5a6;
+            cursor: not-allowed;
+        }
+
+        #column-toggle {
+            background-color: #9b59b6;
+        }
+
+        #column-toggle:hover {
+            background-color: #8e44ad;
+        }
+
+        .data-container {
+            overflow-x: auto;
+            border: 1px solid #ddd;
+            border-radius: 8px;
+            background-color: white;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+            margin-bottom: 20px;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+
+        th, td {
+            border: 1px solid #e1e1e1;
+            padding: 10px 12px;
+            text-align: left;
+            white-space: nowrap;
+        }
+
+        th {
+            background-color: #34495e;
+            color: white;
+            position: sticky;
+            top: 0;
+            z-index: 10;
+            font-weight: 500;
+        }
+
+        .main-header {
+            background-color: #2c3e50;
+            font-weight: 600;
+        }
+
+        .sub-header {
+            background-color: #34495e;
+            font-weight: 400;
+        }
+
+        .month-cell {
+            background-color: #ecf0f1;
+            font-weight: bold;
+            color: #2c3e50;
+        }
+
+        .input-row td {
+            background-color: #2c3e50;
+            color: white;
+            padding: 8px 12px;
+        }
+
+        .input-row input {
+            width: 100%;
+            padding: 6px 8px;
+            background-color: #34495e;
+            color: white;
+            border: 1px solid #4a6278;
+            border-radius: 4px;
+        }
+
+        .input-row input:focus {
+            outline: none;
+            border-color: #3498db;
+        }
+
+        .modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0,0,0,0.5);
+            z-index: 100;
+        }
+
+        .modal-content {
+            background-color: white;
+            margin: 5% auto;
+            padding: 25px;
+            width: 85%;
+            max-width: 900px;
+            border-radius: 8px;
+            max-height: 80vh;
+            overflow-y: auto;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.15);
+        }
+
+        .modal-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+            padding-bottom: 15px;
+            border-bottom: 1px solid #e1e1e1;
+        }
+
+        .modal-header h2 {
+            color: #2c3e50;
+            font-weight: 600;
+        }
+
+        .close {
+            font-size: 28px;
+            font-weight: bold;
+            cursor: pointer;
+            color: #7f8c8d;
+            transition: color 0.2s;
+        }
+
+        .close:hover {
+            color: #e74c3c;
+        }
+
+        .column-list {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+            gap: 12px;
+            margin-bottom: 20px;
+        }
+
+        .column-item {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            padding: 8px 12px;
+            border-radius: 4px;
+            transition: background-color 0.2s;
+        }
+
+        .column-item:hover {
+            background-color: #f8f9fa;
+        }
+
+        .column-item input {
+            margin: 0;
+            transform: scale(1.2);
+        }
+
+        .modal-actions {
+            display: flex;
+            justify-content: flex-end;
+            gap: 12px;
+            margin-top: 20px;
+            padding-top: 15px;
+            border-top: 1px solid #e1e1e1;
+        }
+
+        .modal-actions button {
+            padding: 10px 20px;
+        }
+
+        #select-all {
+            background-color: #2ecc71;
+        }
+
+        #select-all:hover {
+            background-color: #27ae60;
+        }
+
+        #deselect-all {
+            background-color: #e74c3c;
+        }
+
+        #deselect-all:hover {
+            background-color: #c0392b;
+        }
+
+        #apply-columns {
+            background-color: #3498db;
+        }
+
+        #apply-columns:hover {
+            background-color: #2980b9;
+        }
+
+        .hidden {
+            display: none;
+        }
+
+        .status-bar {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 20px;
+            padding: 10px 15px;
+            background-color: #ecf0f1;
+            border-radius: 4px;
+            font-size: 14px;
+            color: #7f8c8d;
+        }
+
+        tbody tr:nth-child(even) {
+            background-color: #f8f9fa;
+        }
+
+        tbody tr:hover {
+            background-color: #e8f4fd;
+        }
+
+        .month-row {
+            font-weight: 500;
+        }
+
+        .import-export-container {
+            display: flex;
+            align-items: center;
+            gap: 15px;
+            padding: 15px;
+            background-color: white;
+            border-radius: 8px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+
+        .import-controls {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .import-controls label {
+            font-weight: 500;
+            color: #2c3e50;
+        }
+
+        .import-controls input {
+            padding: 8px 12px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            width: 200px;
+        }
+
+        #import-data {
+            background-color: #2ecc71;
+        }
+
+        #import-data:hover {
+            background-color: #27ae60;
+        }
+
+        #export-data {
+            background-color: #e74c3c;
+        }
+
+        #export-data:hover {
+            background-color: #c0392b;
+        }
+
+        .file-input-container {
+            position: relative;
+            display: inline-block;
+        }
+
+        .file-input-container input[type="file"] {
+            position: absolute;
+            left: 0;
+            top: 0;
+            opacity: 0;
+            width: 100%;
+            height: 100%;
+            cursor: pointer;
+        }
+
+        .notification {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            padding: 15px 20px;
+            background-color: #2ecc71;
+            color: white;
+            border-radius: 4px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.2);
+            z-index: 1000;
+            display: none;
+        }
+
+        .notification.error {
+            background-color: #e74c3c;
+        }
+
+        .highlighted {
+            background-color: #fff3cd !important;
+            transition: background-color 0.5s;
+        }
+
+        .progress-container {
+            width: 100%;
+            background-color: #ecf0f1;
+            border-radius: 4px;
+            margin: 10px 0;
+            display: none;
+        }
+
+        .progress-bar {
+            width: 0%;
+            height: 20px;
+            background-color: #3498db;
+            border-radius: 4px;
+            transition: width 0.3s ease;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-size: 12px;
+            font-weight: 500;
+        }
+
+        .loading {
+            opacity: 0.7;
+            pointer-events: none;
+        }
+
+        /* Filter Section Styles */
+        .filter-section {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 15px;
+            margin-bottom: 20px;
+            padding: 15px;
+            background-color: white;
+            border-radius: 8px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+
+        .filter-group {
+            display: flex;
+            flex-direction: column;
+            min-width: 150px;
+        }
+
+        .filter-group label {
+            font-weight: 500;
+            margin-bottom: 5px;
+            color: #2c3e50;
+        }
+
+        .filter-group input,
+        .filter-group select {
+            padding: 8px 12px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+        }
+
+        .date-range {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .date-range input {
+            width: 120px;
+        }
+
+        .filter-actions {
+            display: flex;
+            align-items: flex-end;
+            gap: 10px;
+        }
+
+        .filter-actions button {
+            height: 38px;
+        }
+
+        #apply-filter {
+            background-color: #2ecc71;
+        }
+
+        #apply-filter:hover {
+            background-color: #27ae60;
+        }
+
+        #clear-filter {
+            background-color: #95a5a6;
+        }
+
+        #clear-filter:hover {
+            background-color: #7f8c8d;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>Theft of Energy Register</h1>
+            <div class="controls">
+                <button id="column-toggle">Toggle Columns</button>
+            </div>
+        </header>
+
+        <!-- Filter Section -->
+        <div class="filter-section">
+            <div class="filter-group">
+                <label for="date-from">Date From</label>
+                <input type="date" id="date-from">
+            </div>
+            <div class="filter-group">
+                <label for="date-to">Date To</label>
+                <input type="date" id="date-to">
+            </div>
+            <div class="filter-group">
+                <label for="section-filter">Section</label>
+                <select id="section-filter">
+                    <option value="">All Sections</option>
+                    <option value="Anewadi">Anewadi</option>
+                    <option value="Karhar">Karhar</option>
+                    <option value="Kudal">Kudal</option>
+                    <option value="Medha">Medha</option>
+                    <option value="Tapola">Tapola</option>
+                </select>
+            </div>
+            <div class="filter-group">
+                <label for="fy-filter">FY</label>
+                <input type="text" id="fy-filter" placeholder="Enter FY">
+            </div>
+            <div class="filter-group">
+                <label for="us-filter">U/s</label>
+                <select id="us-filter">
+                    <option value="">All U/s</option>
+                    <option value="126">126</option>
+                    <option value="135">135</option>
+                    <option value="Plain">Plain</option>
+                </select>
+            </div>
+            <div class="filter-actions">
+                <button id="apply-filter">Apply Filter</button>
+                <button id="clear-filter">Clear Filter</button>
+            </div>
+        </div>
+
+        <div class="status-bar">
+            <span id="visible-columns-count">8 columns visible</span>
+            <span id="total-rows-count">12 rows</span>
+            <span id="import-status">Ready to import</span>
+        </div>
+
+        <div class="progress-container" id="progress-container">
+            <div class="progress-bar" id="progress-bar">0%</div>
+        </div>
+
+        <div class="data-container">
+            <table id="data-table">
+                <thead>
+                    <tr id="main-header-row" class="main-header">
+                        <!-- Main headers will be populated by JavaScript -->
+                    </tr>
+                    <tr id="sub-header-row" class="sub-header">
+                        <!-- Sub headers will be populated by JavaScript -->
+                    </tr>
+                </thead>
+                <tbody id="table-body">
+                    <!-- Monthly rows will be populated by JavaScript -->
+                </tbody>
+                <tfoot>
+                    <tr id="input-row" class="input-row">
+                        <!-- Input row will be populated by JavaScript -->
+                    </tr>
+                </tfoot>
+            </table>
+        </div>
+
+        <div class="import-export-container">
+            <div class="import-controls">
+                <label for="import-value">Consumer Number:</label>
+                <input type="text" id="import-value" placeholder="Enter consumer number">
+
+                <button id="import-data">Import All Months Data</button>
+            </div>
+
+            <button id="export-data">Export to Excel</button>
+        </div>
+    </div>
+
+    <!-- Column Toggle Modal -->
+    <div id="column-modal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2>Select Columns to Display</h2>
+                <span class="close">&times;</span>
+            </div>
+            <div class="column-list" id="column-list">
+                <!-- Column list will be populated by JavaScript -->
+            </div>
+            <div class="modal-actions">
+                <button id="select-all">Select All</button>
+                <button id="deselect-all">Deselect All</button>
+                <button id="apply-columns">Apply Changes</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Notification -->
+    <div id="notification" class="notification"></div>
+
+    <script>
+        // Define column structure with sub-columns
+        const columnStructure = {
+            "Sr No": { hasSubColumns: false },
+            "VC": { hasSubColumns: false },
+            "Section": { hasSubColumns: false },
+            "Date": { hasSubColumns: false },
+            "FY": { hasSubColumns: false },
+            "Consumer No": { hasSubColumns: false },
+            "PC": { hasSubColumns: false },
+            "Name of the Consumer": { hasSubColumns: false },
+            "U/s": { hasSubColumns: false },
+            "Units": { hasSubColumns: false },
+            "Assessment Details": { 
+                hasSubColumns: true,
+                subColumns: ["Amount", "Paid Amt", "Rcpt No", "Rcpt Date"]
+            },
+            "Compounding Details": { 
+                hasSubColumns: true,
+                subColumns: ["Amount", "Paid Amt", "Rcpt No", "Rcpt Date"]
+            },
+            "B80 Details": { 
+                hasSubColumns: true,
+                subColumns: ["ID", "Date"]
+            },
+            "Remark": { hasSubColumns: false }
+        };
+
+        // Initialize visible columns
+        let visibleColumns = [
+            "Sr No",
+            "Section",
+            "Date",
+            "Consumer No",
+            "PC",
+            "Name of the Consumer",
+            "U/s",
+            "Units",
+            "Assessment Details",
+            "Compounding Details",
+            "B80 Details",
+            "Remark"
+        ];
+
+        // GitHub Repository URL
+        const GITHUB_REPO_URL = "https://bu0965.github.io/Theft_Of_Energy/";
+
+        // Generate months in format 202501, 202502, etc.
+        function generateMonths() {
+            const months = [];
+            const currentYear = new Date().getFullYear();
+            for (let i = 1; i <= 12; i++) {
+                const month = i < 10 ? `0${i}` : `${i}`;
+                months.push(`${currentYear}${month}`);
+            }
+            return months;
+        }
+
+        // Update status bar
+        function updateStatusBar() {
+            document.getElementById('visible-columns-count').textContent =
+                `${visibleColumns.length} columns visible`;
+            document.getElementById('total-rows-count').textContent = '12 rows';
+        }
+
+        // Show notification
+        function showNotification(message, isError = false) {
+            const notification = document.getElementById('notification');
+            notification.textContent = message;
+            notification.className = isError ? 'notification error' : 'notification';
+            notification.style.display = 'block';
+
+            setTimeout(() => {
+                notification.style.display = 'none';
+            }, 4000);
+        }
+
+        // Update import status
+        function updateImportStatus(message) {
+            document.getElementById('import-status').textContent = message;
+        }
+
+        // Highlight a row temporarily
+        function highlightRow(row) {
+            row.classList.add('highlighted');
+            setTimeout(() => {
+                row.classList.remove('highlighted');
+            }, 2000);
+        }
+
+        // Update progress bar
+        function updateProgress(percentage, message = '') {
+            const progressBar = document.getElementById('progress-bar');
+            const progressContainer = document.getElementById('progress-container');
+
+            progressBar.style.width = `${percentage}%`;
+            progressBar.textContent = `${percentage}%${message ? ' - ' + message : ''}`;
+
+            if (percentage > 0 && percentage < 100) {
+                progressContainer.style.display = 'block';
+            } else if (percentage === 100) {
+                setTimeout(() => {
+                    progressContainer.style.display = 'none';
+                }, 1000);
+            }
+        }
+
+        // Show loading state
+        function setLoadingState(loading) {
+            const importButton = document.getElementById('import-data');
+            const container = document.querySelector('.container');
+
+            if (loading) {
+                container.classList.add('loading');
+                importButton.disabled = true;
+                importButton.textContent = 'Importing...';
+            } else {
+                container.classList.remove('loading');
+                importButton.disabled = false;
+                importButton.textContent = 'Import All Months Data';
+            }
+        }
+
+        // Get all leaf columns for data handling
+        function getAllLeafColumns() {
+            const leafColumns = [];
+            
+            visibleColumns.forEach(column => {
+                const columnConfig = columnStructure[column];
+                
+                if (columnConfig.hasSubColumns) {
+                    columnConfig.subColumns.forEach(subColumn => {
+                        leafColumns.push(`${column}-${subColumn}`);
+                    });
+                } else {
+                    leafColumns.push(column);
+                }
+            });
+            
+            return leafColumns;
+        }
+
+        // Initialize the table with two-level headers
+        function initializeTable() {
+            const mainHeaderRow = document.getElementById('main-header-row');
+            const subHeaderRow = document.getElementById('sub-header-row');
+            const tableBody = document.getElementById('table-body');
+            const inputRow = document.getElementById('input-row');
+
+            // Clear existing content
+            mainHeaderRow.innerHTML = '';
+            subHeaderRow.innerHTML = '';
+            tableBody.innerHTML = '';
+            inputRow.innerHTML = '';
+
+            // Add columns based on visibility settings
+            visibleColumns.forEach(column => {
+                const columnConfig = columnStructure[column];
+                
+                if (columnConfig.hasSubColumns) {
+                    // Main header with colspan
+                    const mainTh = document.createElement('th');
+                    mainTh.textContent = column;
+                    mainTh.colSpan = columnConfig.subColumns.length;
+                    mainHeaderRow.appendChild(mainTh);
+                    
+                    // Sub headers
+                    columnConfig.subColumns.forEach(subColumn => {
+                        const subTh = document.createElement('th');
+                        subTh.textContent = subColumn;
+                        subTh.dataset.column = `${column}-${subColumn}`;
+                        subHeaderRow.appendChild(subTh);
+                    });
+                } else {
+                    // Regular column - spans both rows
+                    const mainTh = document.createElement('th');
+                    mainTh.textContent = column;
+                    mainTh.rowSpan = 2;
+                    mainTh.dataset.column = column;
+                    mainHeaderRow.appendChild(mainTh);
+                    
+                    // No sub-header for this column
+                }
+            });
+
+            // Generate 12 monthly rows
+            const months = generateMonths();
+            const leafColumns = getAllLeafColumns();
+            
+            months.forEach(month => {
+                const row = document.createElement('tr');
+                row.className = 'month-row';
+                row.dataset.month = month;
+
+                // Add empty cells for each leaf column
+                leafColumns.forEach(column => {
+                    const cell = document.createElement('td');
+                    cell.dataset.column = column;
+                    cell.textContent = getSampleData(column, month);
+                    row.appendChild(cell);
+                });
+
+                tableBody.appendChild(row);
+            });
+
+            // Add input row at the bottom
+            // Add input cells for each leaf column
+            leafColumns.forEach(column => {
+                const inputCell = document.createElement('td');
+                const input = document.createElement('input');
+                input.type = 'text';
+                input.placeholder = '';
+                input.dataset.column = column;
+                inputCell.appendChild(input);
+                inputRow.appendChild(inputCell);
+            });
+
+            updateStatusBar();
+            updateImportStatus('Ready to import');
+        }
+
+        // Generate sample data for demonstration
+        function getSampleData(column, month) {
+            // Sample data for demonstration
+            const sampleData = {
+                "Sr No": "1",
+                "Section": ["Anewadi", "Karhar", "Kudal", "Medha", "Tapola"][Math.floor(Math.random() * 5)],
+                "Date": `${month.substring(4,6)}/${month.substring(0,4)}`,
+                "Consumer No": "123456",
+                "PC": "PC001",
+                "Name of the Consumer": "Sample Consumer",
+                "U/s": ["126", "135", "Plain"][Math.floor(Math.random() * 3)],
+                "Units": "100",
+                "Assessment Details-Amount": "5000",
+                "Assessment Details-Paid Amt": "4000",
+                "Assessment Details-Rcpt No": "R001",
+                "Assessment Details-Rcpt Date": "01/01/2024",
+                "Compounding Details-Amount": "2000",
+                "Compounding Details-Paid Amt": "1500",
+                "Compounding Details-Rcpt No": "R002",
+                "Compounding Details-Rcpt Date": "02/01/2024",
+                "B80 Details-ID": "B80001",
+                "B80 Details-Date": "03/01/2024",
+                "Remark": "Sample remark"
+            };
+            
+            return sampleData[column] || "";
+        }
+
+        // Initialize column modal
+        function initializeColumnModal() {
+            const columnList = document.getElementById('column-list');
+            columnList.innerHTML = '';
+
+            Object.keys(columnStructure).forEach(column => {
+                const columnItem = document.createElement('div');
+                columnItem.className = 'column-item';
+
+                const checkbox = document.createElement('input');
+                checkbox.type = 'checkbox';
+                checkbox.id = `col-${column.replace(/\s+/g, '-')}`;
+                checkbox.checked = visibleColumns.includes(column);
+                checkbox.dataset.column = column;
+
+                const label = document.createElement('label');
+                label.htmlFor = checkbox.id;
+                label.textContent = column;
+
+                columnItem.appendChild(checkbox);
+                columnItem.appendChild(label);
+                columnList.appendChild(columnItem);
+            });
+        }
+
+        // Apply column visibility changes
+        function applyColumnVisibility() {
+            const checkboxes = document.querySelectorAll('#column-list input[type="checkbox"]');
+            visibleColumns = [];
+
+            checkboxes.forEach(checkbox => {
+                if (checkbox.checked) {
+                    visibleColumns.push(checkbox.dataset.column);
+                }
+            });
+
+            // Ensure at least one column is visible
+            if (visibleColumns.length === 0) {
+                visibleColumns = [Object.keys(columnStructure)[0]];
+            }
+
+            initializeTable();
+            closeModal();
+        }
+
+        // Apply filters to the table
+        function applyFilters() {
+            const dateFrom = document.getElementById('date-from').value;
+            const dateTo = document.getElementById('date-to').value;
+            const sectionFilter = document.getElementById('section-filter').value;
+            const fyFilter = document.getElementById('fy-filter').value;
+            const usFilter = document.getElementById('us-filter').value;
+
+            const rows = document.querySelectorAll('#table-body tr');
+            let visibleRows = 0;
+
+            rows.forEach(row => {
+                let showRow = true;
+                const cells = row.querySelectorAll('td');
+
+                // Apply date filter
+                if (dateFrom || dateTo) {
+                    const dateCell = Array.from(cells).find(cell => cell.dataset.column === 'Date');
+                    if (dateCell) {
+                        const cellDate = new Date(dateCell.textContent.split('/').reverse().join('-'));
+                        const fromDate = dateFrom ? new Date(dateFrom) : null;
+                        const toDate = dateTo ? new Date(dateTo) : null;
+
+                        if ((fromDate && cellDate < fromDate) || (toDate && cellDate > toDate)) {
+                            showRow = false;
+                        }
+                    }
+                }
+
+                // Apply section filter
+                if (sectionFilter && showRow) {
+                    const sectionCell = Array.from(cells).find(cell => cell.dataset.column === 'Section');
+                    if (sectionCell && sectionCell.textContent !== sectionFilter) {
+                        showRow = false;
+                    }
+                }
+
+                // Apply FY filter
+                if (fyFilter && showRow) {
+                    const fyCell = Array.from(cells).find(cell => cell.dataset.column === 'FY');
+                    if (fyCell && !fyCell.textContent.includes(fyFilter)) {
+                        showRow = false;
+                    }
+                }
+
+                // Apply U/s filter
+                if (usFilter && showRow) {
+                    const usCell = Array.from(cells).find(cell => cell.dataset.column === 'U/s');
+                    if (usCell && usCell.textContent !== usFilter) {
+                        showRow = false;
+                    }
+                }
+
+                // Show/hide row based on filter results
+                if (showRow) {
+                    row.style.display = '';
+                    visibleRows++;
+                } else {
+                    row.style.display = 'none';
+                }
+            });
+
+            document.getElementById('total-rows-count').textContent = `${visibleRows} rows`;
+            showNotification(`Filter applied. ${visibleRows} rows match your criteria.`);
+        }
+
+        // Clear all filters
+        function clearFilters() {
+            document.getElementById('date-from').value = '';
+            document.getElementById('date-to').value = '';
+            document.getElementById('section-filter').value = '';
+            document.getElementById('fy-filter').value = '';
+            document.getElementById('us-filter').value = '';
+
+            const rows = document.querySelectorAll('#table-body tr');
+            rows.forEach(row => {
+                row.style.display = '';
+            });
+
+            document.getElementById('total-rows-count').textContent = `${rows.length} rows`;
+            showNotification('Filters cleared.');
+        }
+
+        // Export data to Excel
+        function exportToExcel() {
+            try {
+                // Create workbook
+                const wb = XLSX.utils.book_new();
+
+                // Prepare data for export
+                const exportData = [];
+
+                // Add main headers
+                const mainHeaders = [];
+                const leafColumns = getAllLeafColumns();
+                
+                visibleColumns.forEach(column => {
+                    const columnConfig = columnStructure[column];
+                    if (columnConfig.hasSubColumns) {
+                        columnConfig.subColumns.forEach(subColumn => {
+                            mainHeaders.push(`${column} ${subColumn}`);
+                        });
+                    } else {
+                        mainHeaders.push(column);
+                    }
+                });
+                exportData.push(mainHeaders);
+
+                // Add data rows
+                const tableBody = document.getElementById('table-body');
+                const rows = tableBody.querySelectorAll('tr');
+
+                rows.forEach(row => {
+                    if (row.style.display !== 'none') {
+                        const rowData = [];
+                        const cells = row.querySelectorAll('td');
+
+                        cells.forEach(cell => {
+                            rowData.push(cell.textContent || '');
+                        });
+
+                        exportData.push(rowData);
+                    }
+                });
+
+                // Create worksheet
+                const ws = XLSX.utils.aoa_to_sheet(exportData);
+
+                // Add worksheet to workbook
+                XLSX.utils.book_append_sheet(wb, ws, 'Data');
+
+                // Generate Excel file and trigger download
+                XLSX.writeFile(wb, `customer_data_${document.getElementById('import-value').value || 'export'}.xlsx`);
+
+                showNotification('Data exported successfully!');
+            } catch (error) {
+                console.error('Export error:', error);
+                showNotification('Error exporting data: ' + error.message, true);
+            }
+        }
+
+        // Extract month from filename
+        function extractMonthFromFilename(filename) {
+            const match = filename.match(/_(\d{6})\./);
+            return match ? match[1] : null;
+        }
+
+        // Fetch file from GitHub repository
+        async function fetchFileFromGitHub(filePath) {
+            try {
+                const fileUrl = `${GITHUB_REPO_URL}/${filePath}`;
+                console.log('Fetching file from:', fileUrl);
+
+                const response = await fetch(fileUrl);
+                if (!response.ok) {
+                    throw new Error(`Failed to fetch file: ${response.status}`);
+                }
+
+                const arrayBuffer = await response.arrayBuffer();
+                return arrayBuffer;
+            } catch (error) {
+                console.error('Error fetching file from GitHub:', error);
+                throw error;
+            }
+        }
+
+        // Get list of files from GitHub repository
+        async function getFilesFromGitHub() {
+            try {
+                const excelFiles = [
+                    { name: "PC_CONSUMERS_MASTER_LIST_0965_05_202501.xls", path: "PC_CONSUMERS_MASTER_LIST_0965_05_202501.xls" },
+                    { name: "PC_CONSUMERS_MASTER_LIST_0965_05_202502.xls", path: "PC_CONSUMERS_MASTER_LIST_0965_05_202502.xls" },
+                    { name: "PC_CONSUMERS_MASTER_LIST_0965_05_202503.xls", path: "PC_CONSUMERS_MASTER_LIST_0965_05_202503.xls" },
+                    { name: "PC_CONSUMERS_MASTER_LIST_0965_05_202504.xls", path: "PC_CONSUMERS_MASTER_LIST_0965_05_202504.xls" },
+                    { name: "PC_CONSUMERS_MASTER_LIST_0965_05_202505.xls", path: "PC_CONSUMERS_MASTER_LIST_0965_05_202505.xls" },
+                    { name: "PC_CONSUMERS_MASTER_LIST_0965_05_202506.xls", path: "PC_CONSUMERS_MASTER_LIST_0965_05_202506.xls" },
+                    { name: "PC_CONSUMERS_MASTER_LIST_0965_05_202507.xls", path: "PC_CONSUMERS_MASTER_LIST_0965_05_202507.xls" },
+                    { name: "PC_CONSUMERS_MASTER_LIST_0965_05_202508.xls", path: "PC_CONSUMERS_MASTER_LIST_0965_05_202508.xls" },
+                    { name: "PC_CONSUMERS_MASTER_LIST_0965_05_202509.xls", path: "PC_CONSUMERS_MASTER_LIST_0965_05_202509.xls" },
+                    { name: "PC_CONSUMERS_MASTER_LIST_0965_05_202510.xls", path: "PC_CONSUMERS_MASTER_LIST_0965_05_202510.xls" },
+                    { name: "PC_CONSUMERS_MASTER_LIST_0965_05_202511.xls", path: "PC_CONSUMERS_MASTER_LIST_0965_05_202511.xls" },
+                    { name: "PC_CONSUMERS_MASTER_LIST_0965_05_202512.xls", path: "PC_CONSUMERS_MASTER_LIST_0965_05_202512.xls" }
+                ];
+
+                return excelFiles;
+            } catch (error) {
+                console.error('Error getting files from GitHub:', error);
+                throw error;
+            }
+        }
+
+        // Import data from all Excel files in GitHub repository
+        async function importAllMonthsDataFromGitHub(customerNumber) {
+            try {
+                setLoadingState(true);
+                updateProgress(0, 'Fetching file list from GitHub...');
+
+                const files = await getFilesFromGitHub();
+
+                if (files.length === 0) {
+                    showNotification('No Excel files found in the repository', true);
+                    updateImportStatus('No Excel files found');
+                    setLoadingState(false);
+                    return;
+                }
+
+                updateProgress(10, `Found ${files.length} Excel files`);
+
+                let processedFiles = 0;
+                let foundData = false;
+                const leafColumns = getAllLeafColumns();
+
+                for (const file of files) {
+                    try {
+                        const month = extractMonthFromFilename(file.name);
+
+                        if (!month) {
+                            processedFiles++;
+                            updateProgress(Math.round((processedFiles / files.length) * 90) + 10, `Skipping ${file.name}`);
+                            continue;
+                        }
+
+                        updateProgress(Math.round((processedFiles / files.length) * 90) + 10, `Processing ${file.name}`);
+
+                        const data = await fetchFileFromGitHub(file.path);
+                        const workbook = XLSX.read(data, { type: 'array' });
+                        const worksheet = workbook.Sheets[workbook.SheetNames[0]];
+                        const jsonData = XLSX.utils.sheet_to_json(worksheet, { header: 1 });
+
+                        if (jsonData.length > 0) {
+                            const headers = jsonData[0];
+                            const consumerNumberIndex = 23;
+
+                            let customerRow = null;
+                            for (let i = 1; i < jsonData.length; i++) {
+                                const rowData = jsonData[i];
+                                if (rowData && rowData[consumerNumberIndex] == customerNumber) {
+                                    customerRow = rowData;
+                                    break;
+                                }
+                            }
+
+                            if (customerRow) {
+                                const tableBody = document.getElementById('table-body');
+                                const targetRow = tableBody.querySelector(`tr[data-month="${month}"]`);
+
+                                if (targetRow) {
+                                    const cells = targetRow.querySelectorAll('td');
+
+                                    // Update data cells based on leaf columns
+                                    leafColumns.forEach((leafColumn, cellIndex) => {
+                                        // Find the main column and sub column
+                                        let columnName = leafColumn;
+                                        let subColumnName = null;
+                                        
+                                        // Check if this is a sub-column
+                                        Object.keys(columnStructure).forEach(mainCol => {
+                                            const config = columnStructure[mainCol];
+                                            if (config.hasSubColumns && leafColumn.startsWith(mainCol)) {
+                                                columnName = mainCol;
+                                                subColumnName = leafColumn.replace(`${mainCol}-`, '');
+                                            }
+                                        });
+
+                                        const columnIndex = headers.indexOf(columnName);
+                                        if (columnIndex !== -1 && customerRow[columnIndex] !== undefined) {
+                                            cells[cellIndex].textContent = customerRow[columnIndex];
+                                        }
+                                    });
+
+                                    highlightRow(targetRow);
+                                    foundData = true;
+                                }
+                            }
+                        }
+                    } catch (error) {
+                        console.error(`Error processing ${file.name}:`, error);
+                    }
+
+                    processedFiles++;
+                    updateProgress(Math.round((processedFiles / files.length) * 90) + 10, `Processed ${processedFiles}/${files.length} files`);
+                }
+
+                setLoadingState(false);
+                updateProgress(100, 'Import complete');
+
+                if (foundData) {
+                    showNotification(`Data imported for customer ${customerNumber} across all months!`);
+                    updateImportStatus(`Data imported for ${customerNumber}`);
+                } else {
+                    showNotification(`No data found for customer ${customerNumber} in any files`, true);
+                    updateImportStatus('No data found');
+                }
+            } catch (error) {
+                console.error('Error importing data from GitHub:', error);
+                showNotification('Error importing data: ' + error.message, true);
+                updateImportStatus('Import failed');
+                setLoadingState(false);
+            }
+        }
+
+        // Modal functions
+        function openModal() {
+            document.getElementById('column-modal').style.display = 'block';
+            initializeColumnModal();
+        }
+
+        function closeModal() {
+            document.getElementById('column-modal').style.display = 'none';
+        }
+
+        // Event listeners
+        document.getElementById('column-toggle').addEventListener('click', openModal);
+        document.getElementById('apply-columns').addEventListener('click', applyColumnVisibility);
+        document.querySelector('.close').addEventListener('click', closeModal);
+
+        document.getElementById('select-all').addEventListener('click', () => {
+            document.querySelectorAll('#column-list input[type="checkbox"]').forEach(checkbox => {
+                checkbox.checked = true;
+            });
+        });
+
+        document.getElementById('deselect-all').addEventListener('click', () => {
+            document.querySelectorAll('#column-list input[type="checkbox"]').forEach(checkbox => {
+                checkbox.checked = false;
+            });
+        });
+
+        document.getElementById('export-data').addEventListener('click', exportToExcel);
+
+        document.getElementById('import-data').addEventListener('click', () => {
+            const customerNumber = document.getElementById('import-value').value.trim();
+
+            if (!customerNumber) {
+                showNotification('Please enter a customer number', true);
+                return;
+            }
+
+            importAllMonthsDataFromGitHub(customerNumber);
+        });
+
+        // Filter event listeners
+        document.getElementById('apply-filter').addEventListener('click', applyFilters);
+        document.getElementById('clear-filter').addEventListener('click', clearFilters);
+
+        // Close modal when clicking outside
+        window.addEventListener('click', (event) => {
+            const modal = document.getElementById('column-modal');
+            if (event.target === modal) {
+                closeModal();
+            }
+        });
+
+        // Initialize the application
+        document.addEventListener('DOMContentLoaded', () => {
+            initializeTable();
+        });
+    </script>
+</body>
+</html>
