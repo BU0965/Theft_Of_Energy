@@ -1,0 +1,1393 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Theft of Energy Register</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+    <style>
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        }
+
+        body {
+            padding: 20px;
+            background-color: #f0f2f5;
+            color: #333;
+        }
+
+        .container {
+            max-width: 100%;
+            margin: 0 auto;
+        }
+
+        header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+            padding: 15px 20px;
+            background-color: #2c3e50;
+            color: white;
+            border-radius: 8px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+
+        h1 {
+            font-size: 24px;
+            font-weight: 600;
+        }
+
+        .controls {
+            display: flex;
+            gap: 10px;
+        }
+
+        button {
+            padding: 10px 16px;
+            background-color: #3498db;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 14px;
+            font-weight: 500;
+            transition: background-color 0.2s;
+        }
+
+        button:hover {
+            background-color: #2980b9;
+        }
+
+        button:disabled {
+            background-color: #95a5a6;
+            cursor: not-allowed;
+        }
+
+        #column-toggle {
+            background-color: #9b59b6;
+        }
+
+        #column-toggle:hover {
+            background-color: #8e44ad;
+        }
+
+        .data-container {
+            overflow-x: auto;
+            border: 1px solid #ddd;
+            border-radius: 8px;
+            background-color: white;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+            margin-bottom: 20px;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+
+        th, td {
+            border: 1px solid #e1e1e1;
+            padding: 10px 12px;
+            text-align: left;
+            white-space: nowrap;
+        }
+
+        th {
+            background-color: #34495e;
+            color: white;
+            position: sticky;
+            top: 0;
+            z-index: 10;
+            font-weight: 500;
+        }
+
+        .main-header {
+            background-color: #2c3e50;
+            font-weight: 600;
+        }
+
+        .sub-header {
+            background-color: #34495e;
+            font-weight: 400;
+        }
+
+        .month-cell {
+            background-color: #ecf0f1;
+            font-weight: bold;
+            color: #2c3e50;
+        }
+
+        .input-row td {
+            background-color: #2c3e50;
+            color: white;
+            padding: 8px 12px;
+        }
+
+        .input-row input {
+            width: 100%;
+            padding: 6px 8px;
+            background-color: #34495e;
+            color: white;
+            border: 1px solid #4a6278;
+            border-radius: 4px;
+        }
+
+        .input-row input:focus {
+            outline: none;
+            border-color: #3498db;
+        }
+
+        .modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0,0,0,0.5);
+            z-index: 100;
+        }
+
+        .modal-content {
+            background-color: white;
+            margin: 5% auto;
+            padding: 25px;
+            width: 85%;
+            max-width: 900px;
+            border-radius: 8px;
+            max-height: 80vh;
+            overflow-y: auto;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.15);
+        }
+
+        .modal-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+            padding-bottom: 15px;
+            border-bottom: 1px solid #e1e1e1;
+        }
+
+        .modal-header h2 {
+            color: #2c3e50;
+            font-weight: 600;
+        }
+
+        .close {
+            font-size: 28px;
+            font-weight: bold;
+            cursor: pointer;
+            color: #7f8c8d;
+            transition: color 0.2s;
+        }
+
+        .close:hover {
+            color: #e74c3c;
+        }
+
+        .column-list {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+            gap: 12px;
+            margin-bottom: 20px;
+        }
+
+        .column-item {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            padding: 8px 12px;
+            border-radius: 4px;
+            transition: background-color 0.2s;
+        }
+
+        .column-item:hover {
+            background-color: #f8f9fa;
+        }
+
+        .column-item input {
+            margin: 0;
+            transform: scale(1.2);
+        }
+
+        .modal-actions {
+            display: flex;
+            justify-content: flex-end;
+            gap: 12px;
+            margin-top: 20px;
+            padding-top: 15px;
+            border-top: 1px solid #e1e1e1;
+        }
+
+        .modal-actions button {
+            padding: 10px 20px;
+        }
+
+        #select-all {
+            background-color: #2ecc71;
+        }
+
+        #select-all:hover {
+            background-color: #27ae60;
+        }
+
+        #deselect-all {
+            background-color: #e74c3c;
+        }
+
+        #deselect-all:hover {
+            background-color: #c0392b;
+        }
+
+        #apply-columns {
+            background-color: #3498db;
+        }
+
+        #apply-columns:hover {
+            background-color: #2980b9;
+        }
+
+        .hidden {
+            display: none;
+        }
+
+        .status-bar {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 20px;
+            padding: 10px 15px;
+            background-color: #ecf0f1;
+            border-radius: 4px;
+            font-size: 14px;
+            color: #7f8c8d;
+        }
+
+        tbody tr:nth-child(even) {
+            background-color: #f8f9fa;
+        }
+
+        tbody tr:hover {
+            background-color: #e8f4fd;
+        }
+
+        .month-row {
+            font-weight: 500;
+        }
+
+        .import-export-container {
+            display: flex;
+            align-items: center;
+            gap: 15px;
+            padding: 15px;
+            background-color: white;
+            border-radius: 8px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+
+        .import-controls {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .import-controls label {
+            font-weight: 500;
+            color: #2c3e50;
+        }
+
+        .import-controls input {
+            padding: 8px 12px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            width: 200px;
+        }
+
+        #import-data {
+            background-color: #2ecc71;
+        }
+
+        #import-data:hover {
+            background-color: #27ae60;
+        }
+
+        #export-data {
+            background-color: #e74c3c;
+        }
+
+        #export-data:hover {
+            background-color: #c0392b;
+        }
+
+        .file-input-container {
+            position: relative;
+            display: inline-block;
+        }
+
+        .file-input-container input[type="file"] {
+            position: absolute;
+            left: 0;
+            top: 0;
+            opacity: 0;
+            width: 100%;
+            height: 100%;
+            cursor: pointer;
+        }
+
+        .notification {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            padding: 15px 20px;
+            background-color: #2ecc71;
+            color: white;
+            border-radius: 4px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.2);
+            z-index: 1000;
+            display: none;
+        }
+
+        .notification.error {
+            background-color: #e74c3c;
+        }
+
+        .highlighted {
+            background-color: #fff3cd !important;
+            transition: background-color 0.5s;
+        }
+
+        .progress-container {
+            width: 100%;
+            background-color: #ecf0f1;
+            border-radius: 4px;
+            margin: 10px 0;
+            display: none;
+        }
+
+        .progress-bar {
+            width: 0%;
+            height: 20px;
+            background-color: #3498db;
+            border-radius: 4px;
+            transition: width 0.3s ease;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-size: 12px;
+            font-weight: 500;
+        }
+
+        .loading {
+            opacity: 0.7;
+            pointer-events: none;
+        }
+
+        /* Filter Section Styles */
+        .filter-section {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 15px;
+            margin-bottom: 20px;
+            padding: 15px;
+            background-color: white;
+            border-radius: 8px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+
+        .filter-group {
+            display: flex;
+            flex-direction: column;
+            min-width: 150px;
+        }
+
+        .filter-group label {
+            font-weight: 500;
+            margin-bottom: 5px;
+            color: #2c3e50;
+        }
+
+        .filter-group input,
+        .filter-group select {
+            padding: 8px 12px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+        }
+
+        .date-range {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .date-range input {
+            width: 120px;
+        }
+
+        .filter-actions {
+            display: flex;
+            align-items: flex-end;
+            gap: 10px;
+        }
+
+        .filter-actions button {
+            height: 38px;
+        }
+
+        #apply-filter {
+            background-color: #2ecc71;
+        }
+
+        #apply-filter:hover {
+            background-color: #27ae60;
+        }
+
+        #clear-filter {
+            background-color: #95a5a6;
+        }
+
+        #clear-filter:hover {
+            background-color: #7f8c8d;
+        }
+
+        /* Pagination Styles */
+        .pagination-container {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            gap: 10px;
+            margin-top: 20px;
+            padding: 15px;
+            background-color: white;
+            border-radius: 8px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+
+        .pagination-btn {
+            padding: 8px 12px;
+            background-color: #3498db;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+        }
+
+        .pagination-btn:hover:not(:disabled) {
+            background-color: #2980b9;
+        }
+
+        .pagination-btn:disabled {
+            background-color: #bdc3c7;
+            cursor: not-allowed;
+        }
+
+        .page-numbers {
+            display: flex;
+            gap: 5px;
+        }
+
+        .page-number {
+            padding: 8px 12px;
+            background-color: #ecf0f1;
+            border: 1px solid #bdc3c7;
+            border-radius: 4px;
+            cursor: pointer;
+        }
+
+        .page-number.active {
+            background-color: #3498db;
+            color: white;
+            border-color: #3498db;
+        }
+
+        .page-number:hover:not(.active) {
+            background-color: #d5dbdb;
+        }
+
+        .rows-per-page {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            margin-left: auto;
+        }
+
+        .rows-per-page select {
+            padding: 6px 10px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>Theft of Energy Register</h1>
+            <div class="controls">
+                <button id="column-toggle">Toggle Columns</button>
+            </div>
+        </header>
+
+        <div class="filter-section">
+            <div class="filter-group">
+                <label for="date-from">Date From</label>
+                <input type="date" id="date-from">
+            </div>
+            <div class="filter-group">
+                <label for="date-to">Date To</label>
+                <input type="date" id="date-to">
+            </div>
+            <div class="filter-group">
+                <label for="section-filter">Section</label>
+                <select id="section-filter">
+                    <option value="">All Sections</option>
+                    <option value="Anewadi">Anewadi</option>
+                    <option value="Karhar">Karhar</option>
+                    <option value="Kudal">Kudal</option>
+                    <option value="Medha">Medha</option>
+                    <option value="Tapola">Tapola</option>
+                </select>
+            </div>
+            <div class="filter-group">
+                <label for="fy-filter">FY</label>
+                <input type="text" id="fy-filter" placeholder="Enter FY">
+            </div>
+            <div class="filter-group">
+                <label for="us-filter">U/s</label>
+                <select id="us-filter">
+                    <option value="">All U/s</option>
+                    <option value="126">126</option>
+                    <option value="135">135</option>
+                    <option value="Plain">Plain</option>
+                </select>
+            </div>
+            <div class="filter-actions">
+                <button id="apply-filter">Apply Filter</button>
+                <button id="clear-filter">Clear Filter</button>
+            </div>
+        </div>
+
+        <div class="status-bar">
+            <span id="visible-columns-count">8 columns visible</span>
+            <span id="total-rows-count">0 rows</span>
+            <span id="import-status">Ready to import</span>
+        </div>
+
+        <div class="progress-container" id="progress-container">
+            <div class="progress-bar" id="progress-bar">0%</div>
+        </div>
+
+        <div class="data-container">
+            <table id="data-table">
+                <thead>
+                    <tr id="main-header-row" class="main-header">
+                        </tr>
+                    <tr id="sub-header-row" class="sub-header">
+                        </tr>
+                </thead>
+                <tbody id="table-body">
+                    </tbody>
+                <tfoot>
+                    <tr id="input-row" class="input-row">
+                        </tr>
+                </tfoot>
+            </table>
+        </div>
+
+        <div class="pagination-container">
+            <button id="first-page" class="pagination-btn">First</button>
+            <button id="prev-page" class="pagination-btn">Previous</button>
+            
+            <div class="page-numbers" id="page-numbers">
+                </div>
+            
+            <button id="next-page" class="pagination-btn">Next</button>
+            <button id="last-page" class="pagination-btn">Last</button>
+            
+            <div class="rows-per-page">
+                <label for="rows-per-page-select">Rows per page:</label>
+                <select id="rows-per-page-select">
+                    <option value="10">10</option>
+                    <option value="25">25</option>
+                    <option value="50">50</option>
+                    <option value="100">100</option>
+                </select>
+            </div>
+        </div>
+
+        <div class="import-export-container">
+            <div class="import-controls">
+                <button id="import-data">Import Data from Theft Info File</button>
+            </div>
+
+            <button id="export-data">Export to Excel</button>
+        </div>
+    </div>
+
+    <div id="column-modal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2>Select Columns to Display</h2>
+                <span class="close">&times;</span>
+            </div>
+            <div class="column-list" id="column-list">
+                </div>
+            <div class="modal-actions">
+                <button id="select-all">Select All</button>
+                <button id="deselect-all">Deselect All</button>
+                <button id="apply-columns">Apply Changes</button>
+            </div>
+        </div>
+    </div>
+
+    <div id="notification" class="notification"></div>
+
+    <script>
+        // Define column structure with sub-columns
+        const columnStructure = {
+            "Sr No": { hasSubColumns: false },
+            "VC": { hasSubColumns: false },
+            "Section": { hasSubColumns: false },
+            "Date": { hasSubColumns: false },
+            "FY": { hasSubColumns: false },
+            "Consumer No": { hasSubColumns: false },
+            "PC": { hasSubColumns: false },
+            "Name of the Consumer": { hasSubColumns: false },
+            "U/s": { hasSubColumns: false },
+            "Units": { hasSubColumns: false },
+            "Assessment Details": { 
+                hasSubColumns: true,
+                subColumns: ["1.Amount", "1.Paid Amt", "1.Rcpt No", "1.Rcpt Date"]
+            },
+            "Compounding Details": { 
+                hasSubColumns: true,
+                subColumns: ["2.Amount", "2.Paid Amt", "2.Rcpt No", "2.Rcpt Date"]
+            },
+            "B80 Details": { 
+                hasSubColumns: true,
+                subColumns: ["B80 ID", "B80 Date"]
+            },
+            "Remark": { hasSubColumns: false }
+        };
+
+        // Initialize visible columns
+        let visibleColumns = [
+            "Sr No",
+            "VC",
+            "Section",
+            "Date",
+            "FY",
+            "Consumer No",
+            "PC",
+            "Name of the Consumer",
+            "U/s",
+            "Units",
+            "Assessment Details",
+            "Compounding Details",
+            "B80 Details",
+            "Remark"
+        ];
+
+        // GitHub Repository URL
+        const GITHUB_REPO_URL = "https://bu0965.github.io/Theft_Of_Energy/";
+
+        // Pagination variables
+        let currentPage = 1;
+        let rowsPerPage = 10;
+        let totalRows = 0;
+        let allDataRows = [];
+        let filteredDataRows = [];
+
+        // Fixed column mapping based on Excel columns A:U
+        const fixedColumnMapping = {
+            // Main columns mapping
+            "Sr No": 0,           // Column A
+            "VC": 1,              // Column B
+            "Section": 2,         // Column C
+            "Date": 3,            // Column D
+            "FY": 4,              // Column E
+            "Consumer No": 5,     // Column F
+            "PC": 6,              // Column G
+            "Name of the Consumer": 7, // Column H
+            "U/s": 8,             // Column I
+            "Units": 9,           // Column J
+            
+            // Assessment Details sub-columns
+            "Assessment Details-1.Amount": 10,   // Column K
+            "Assessment Details-1.Paid Amt": 11, // Column L
+            "Assessment Details-1.Rcpt No": 12,  // Column M
+            "Assessment Details-1.Rcpt Date": 13, // Column N
+            
+            // Compounding Details sub-columns
+            "Compounding Details-2.Amount": 14,   // Column O
+            "Compounding Details-2.Paid Amt": 15, // Column P
+            "Compounding Details-2.Rcpt No": 16,  // Column Q
+            "Compounding Details-2.Rcpt Date": 17, // Column R
+            
+            // B80 Details sub-columns
+            "B80 Details-B80 ID": 18,   // Column S
+            "B80 Details-B80 Date": 19, // Column T
+            
+            // Remark
+            "Remark": 20          // Column U
+        };
+
+        // Update status bar
+        function updateStatusBar() {
+            const rowCount = filteredDataRows.length > 0 ? filteredDataRows.length : allDataRows.length;
+            document.getElementById('visible-columns-count').textContent =
+                `${visibleColumns.length} columns visible`;
+            document.getElementById('total-rows-count').textContent = `${rowCount} rows`;
+        }
+
+        // Show notification
+        function showNotification(message, isError = false) {
+            const notification = document.getElementById('notification');
+            notification.textContent = message;
+            notification.className = isError ? 'notification error' : 'notification';
+            notification.style.display = 'block';
+
+            setTimeout(() => {
+                notification.style.display = 'none';
+            }, 4000);
+        }
+
+        // Update import status
+        function updateImportStatus(message) {
+            document.getElementById('import-status').textContent = message;
+        }
+
+        // Highlight a row temporarily
+        function highlightRow(row) {
+            row.classList.add('highlighted');
+            setTimeout(() => {
+                row.classList.remove('highlighted');
+            }, 2000);
+        }
+
+        // Update progress bar
+        function updateProgress(percentage, message = '') {
+            const progressBar = document.getElementById('progress-bar');
+            const progressContainer = document.getElementById('progress-container');
+
+            progressBar.style.width = `${percentage}%`;
+            progressBar.textContent = `${percentage}%${message ? ' - ' + message : ''}`;
+
+            if (percentage > 0 && percentage < 100) {
+                progressContainer.style.display = 'block';
+            } else if (percentage === 100) {
+                setTimeout(() => {
+                    progressContainer.style.display = 'none';
+                }, 1000);
+            }
+        }
+
+        // Show loading state
+        function setLoadingState(loading) {
+            const importButton = document.getElementById('import-data');
+            const container = document.querySelector('.container');
+
+            if (loading) {
+                container.classList.add('loading');
+                importButton.disabled = true;
+                importButton.textContent = 'Importing...';
+            } else {
+                container.classList.remove('loading');
+                importButton.disabled = false;
+                importButton.textContent = 'Import Data from Theft Info File';
+            }
+        }
+
+        // Get all leaf columns for data handling
+        function getAllLeafColumns() {
+            const leafColumns = [];
+            
+            visibleColumns.forEach(column => {
+                const columnConfig = columnStructure[column];
+                
+                if (columnConfig.hasSubColumns) {
+                    columnConfig.subColumns.forEach(subColumn => {
+                        leafColumns.push(`${column}-${subColumn}`);
+                    });
+                } else {
+                    leafColumns.push(column);
+                }
+            });
+            
+            return leafColumns;
+        }
+
+        // Initialize the table with two-level headers
+        function initializeTable() {
+            const mainHeaderRow = document.getElementById('main-header-row');
+            const subHeaderRow = document.getElementById('sub-header-row');
+            const tableBody = document.getElementById('table-body');
+            const inputRow = document.getElementById('input-row');
+
+            // Clear existing content
+            mainHeaderRow.innerHTML = '';
+            subHeaderRow.innerHTML = '';
+            tableBody.innerHTML = '';
+            inputRow.innerHTML = '';
+
+            // Add columns based on visibility settings
+            visibleColumns.forEach(column => {
+                const columnConfig = columnStructure[column];
+                
+                if (columnConfig.hasSubColumns) {
+                    // Main header with colspan
+                    const mainTh = document.createElement('th');
+                    mainTh.textContent = column;
+                    mainTh.colSpan = columnConfig.subColumns.length;
+                    mainHeaderRow.appendChild(mainTh);
+                    
+                    // Sub headers
+                    columnConfig.subColumns.forEach(subColumn => {
+                        const subTh = document.createElement('th');
+                        subTh.textContent = subColumn;
+                        subTh.dataset.column = `${column}-${subColumn}`;
+                        subHeaderRow.appendChild(subTh);
+                    });
+                } else {
+                    // Regular column - spans both rows
+                    const mainTh = document.createElement('th');
+                    mainTh.textContent = column;
+                    mainTh.rowSpan = 2;
+                    mainTh.dataset.column = column;
+                    mainHeaderRow.appendChild(mainTh);
+                    
+                    // No sub-header for this column
+                }
+            });
+
+            // Add input row at the bottom
+            const leafColumns = getAllLeafColumns();
+            
+            // Add input cells for each leaf column
+            leafColumns.forEach(column => {
+                const inputCell = document.createElement('td');
+                const input = document.createElement('input');
+                input.type = 'text';
+                input.placeholder = '';
+                input.dataset.column = column;
+                inputCell.appendChild(input);
+                inputRow.appendChild(inputCell);
+            });
+
+            updateStatusBar();
+            updateImportStatus('Ready to import');
+        }
+
+        // Initialize column modal
+        function initializeColumnModal() {
+            const columnList = document.getElementById('column-list');
+            columnList.innerHTML = '';
+
+            Object.keys(columnStructure).forEach(column => {
+                const columnItem = document.createElement('div');
+                columnItem.className = 'column-item';
+
+                const checkbox = document.createElement('input');
+                checkbox.type = 'checkbox';
+                checkbox.id = `col-${column.replace(/\s+/g, '-')}`;
+                checkbox.checked = visibleColumns.includes(column);
+                checkbox.dataset.column = column;
+
+                const label = document.createElement('label');
+                label.htmlFor = checkbox.id;
+                label.textContent = column;
+
+                columnItem.appendChild(checkbox);
+                columnItem.appendChild(label);
+                columnList.appendChild(columnItem);
+            });
+        }
+
+        // Apply column visibility changes
+        function applyColumnVisibility() {
+            const checkboxes = document.querySelectorAll('#column-list input[type="checkbox"]');
+            visibleColumns = [];
+
+            checkboxes.forEach(checkbox => {
+                if (checkbox.checked) {
+                    visibleColumns.push(checkbox.dataset.column);
+                }
+            });
+
+            // Ensure at least one column is visible
+            if (visibleColumns.length === 0) {
+                visibleColumns = [Object.keys(columnStructure)[0]];
+            }
+
+            initializeTable();
+            closeModal();
+        }
+
+        // Apply filters to the table
+        function applyFilters() {
+            const dateFrom = document.getElementById('date-from').value;
+            const dateTo = document.getElementById('date-to').value;
+            const sectionFilter = document.getElementById('section-filter').value;
+            const fyFilter = document.getElementById('fy-filter').value.toLowerCase();
+            const usFilter = document.getElementById('us-filter').value;
+
+            // Reset filtered data
+            filteredDataRows = [];
+
+            // If no filters are applied, show all data
+            if (!dateFrom && !dateTo && !sectionFilter && !fyFilter && !usFilter) {
+                updateTableWithData(allDataRows);
+                showNotification('All filters cleared. Showing all data.');
+                return;
+            }
+
+            allDataRows.forEach(row => {
+                let showRow = true;
+
+                // Get cell values
+                const dateCell = row.querySelector('td[data-column="Date"]');
+                const sectionCell = row.querySelector('td[data-column="Section"]');
+                const fyCell = row.querySelector('td[data-column="FY"]');
+                const usCell = row.querySelector('td[data-column="U/s"]');
+
+                // Apply date filter
+                if (dateFrom || dateTo) {
+                    if (dateCell && dateCell.textContent) {
+                        try {
+                            // Parse DD-MM-YYYY format
+                            const dateParts = dateCell.textContent.split('-');
+                            if (dateParts.length === 3) {
+                                const cellDate = new Date(dateParts[2], dateParts[1] - 1, dateParts[0]);
+                            
+                                const fromDate = dateFrom ? new Date(dateFrom) : null;
+                                const toDate = dateTo ? new Date(dateTo) : null;
+
+                                if ((fromDate && cellDate < fromDate) || (toDate && cellDate > toDate)) {
+                                    showRow = false;
+                                }
+                            }
+                        } catch (e) {
+                            console.warn('Date parsing error:', e);
+                        }
+                    } else {
+                        showRow = false;
+                    }
+                }
+
+                // Apply section filter
+                if (sectionFilter && showRow) {
+                    if (!sectionCell || sectionCell.textContent.trim() !== sectionFilter) {
+                        showRow = false;
+                    }
+                }
+
+                // Apply FY filter
+                if (fyFilter && showRow) {
+                    if (!fyCell || !fyCell.textContent.toLowerCase().includes(fyFilter)) {
+                        showRow = false;
+                    }
+                }
+
+                // Apply U/s filter
+                if (usFilter && showRow) {
+                    if (!usCell || usCell.textContent.trim() !== usFilter) {
+                        showRow = false;
+                    }
+                }
+
+                // Add to filtered rows if it passes all filters
+                if (showRow) {
+                    filteredDataRows.push(row);
+                }
+            });
+
+            // Update table with filtered data
+            updateTableWithData(filteredDataRows);
+            showNotification(`Filter applied. ${filteredDataRows.length} rows match your criteria.`);
+        }
+
+        // Clear all filters
+        function clearFilters() {
+            document.getElementById('date-from').value = '';
+            document.getElementById('date-to').value = '';
+            document.getElementById('section-filter').value = '';
+            document.getElementById('fy-filter').value = '';
+            document.getElementById('us-filter').value = '';
+
+            // Reset filtered data and show all data
+            filteredDataRows = [];
+            updateTableWithData(allDataRows);
+            showNotification('Filters cleared. Showing all data.');
+        }
+
+        // Format date to DD-MM-YYYY
+        function formatDate(dateValue) {
+            if (!dateValue) return '';
+            
+            // If it's already a Date object
+            if (dateValue instanceof Date) {
+                const day = String(dateValue.getDate()).padStart(2, '0');
+                const month = String(dateValue.getMonth() + 1).padStart(2, '0');
+                const year = dateValue.getFullYear();
+                return `${day}-${month}-${year}`;
+            }
+            
+            // If it's a string, try to parse it
+            const dateStr = String(dateValue);
+            
+            // Try different date formats
+            let dateObj;
+            
+            // Try Excel serial date (common in XLS files)
+            if (!isNaN(dateValue) && dateValue > 25568) { // Excel date starts from 1900
+                dateObj = new Date((dateValue - 25569) * 86400 * 1000);
+            } 
+            // Try ISO format (YYYY-MM-DD)
+            else if (dateStr.match(/^\d{4}-\d{2}-\d{2}/)) {
+                dateObj = new Date(dateStr);
+            }
+            // Try DD/MM/YYYY format
+            else if (dateStr.match(/^\d{1,2}\/\d{1,2}\/\d{4}/)) {
+                const parts = dateStr.split('/');
+                dateObj = new Date(parts[2], parts[1] - 1, parts[0]);
+            }
+            // Try MM/DD/YYYY format
+            else if (dateStr.match(/^\d{1,2}\/\d{1,2}\/\d{4}/)) {
+                dateObj = new Date(dateStr);
+            }
+            // Fallback - try native parsing
+            else {
+                dateObj = new Date(dateStr);
+            }
+            
+            // Check if date is valid
+            if (isNaN(dateObj.getTime())) {
+                return dateStr; // Return original if not a valid date
+            }
+            
+            const day = String(dateObj.getDate()).padStart(2, '0');
+            const month = String(dateObj.getMonth() + 1).padStart(2, '0');
+            const year = dateObj.getFullYear();
+            
+            return `${day}-${month}-${year}`;
+        }
+
+        // Export data to Excel
+        function exportToExcel() {
+            try {
+                // Create workbook
+                const wb = XLSX.utils.book_new();
+
+                // Prepare data for export
+                const exportData = [];
+
+                // Add main headers
+                const mainHeaders = [];
+                const leafColumns = getAllLeafColumns();
+                
+                visibleColumns.forEach(column => {
+                    const columnConfig = columnStructure[column];
+                    if (columnConfig.hasSubColumns) {
+                        columnConfig.subColumns.forEach(subColumn => {
+                            mainHeaders.push(`${column} ${subColumn}`);
+                        });
+                    } else {
+                        mainHeaders.push(column);
+                    }
+                });
+                exportData.push(mainHeaders);
+
+                // Add data rows (use filtered data if available, otherwise all data)
+                const dataToExport = filteredDataRows.length > 0 ? filteredDataRows : allDataRows;
+                
+                dataToExport.forEach(row => {
+                    const rowData = [];
+                    const cells = row.querySelectorAll('td');
+
+                    cells.forEach(cell => {
+                        rowData.push(cell.textContent || '');
+                    });
+
+                    exportData.push(rowData);
+                });
+
+                // Create worksheet
+                const ws = XLSX.utils.aoa_to_sheet(exportData);
+
+                // Add worksheet to workbook
+                XLSX.utils.book_append_sheet(wb, ws, 'Data');
+
+                // Generate Excel file and trigger download
+                XLSX.writeFile(wb, `theft_energy_data_export.xlsx`);
+
+                showNotification('Data exported successfully!');
+            } catch (error) {
+                console.error('Export error:', error);
+                showNotification('Error exporting data: ' + error.message, true);
+            }
+        }
+
+        // Fetch file from GitHub repository
+        async function fetchFileFromGitHub(filePath) {
+            try {
+                const fileUrl = `${GITHUB_REPO_URL}/${filePath}`;
+                console.log('Fetching file from:', fileUrl);
+
+                const response = await fetch(fileUrl);
+                if (!response.ok) {
+                    throw new Error(`Failed to fetch file: ${response.status}`);
+                }
+
+                const arrayBuffer = await response.arrayBuffer();
+                return arrayBuffer;
+            } catch (error) {
+                console.error('Error fetching file from GitHub:', error);
+                throw error;
+            }
+        }
+
+        // Import data from Theft Info file
+        async function importDataFromTheftInfoFile() {
+            try {
+                setLoadingState(true);
+                updateProgress(0, 'Fetching Theft Info file from GitHub...');
+
+                const fileName = "Theft Info_Web_0965.xls";
+                
+                updateProgress(20, 'Processing Theft Info file...');
+
+                const data = await fetchFileFromGitHub(fileName);
+                const workbook = XLSX.read(data, { type: 'array' });
+                const worksheet = workbook.Sheets[workbook.SheetNames[0]];
+                const jsonData = XLSX.utils.sheet_to_json(worksheet, { header: 1 });
+
+                if (jsonData.length <= 1) {
+                    showNotification('No data found in Theft Info file', true);
+                    updateImportStatus('No data found');
+                    setLoadingState(false);
+                    return;
+                }
+
+                updateProgress(50, 'Processing data rows...');
+
+                const leafColumns = getAllLeafColumns();
+
+                // Create data rows
+                allDataRows = [];
+                let rowCount = 0;
+                
+                // Start from row 2 (index 2) since row 0 is header and row 1 might be empty
+                for (let i = 2; i < jsonData.length && i < 205; i++) {
+                    const rowData = jsonData[i];
+                    if (!rowData || rowData.length === 0) continue;
+
+                    const row = document.createElement('tr');
+                    
+                    // Add cells for each leaf column using fixed mapping
+                    leafColumns.forEach(leafColumn => {
+                        const cell = document.createElement('td');
+                        cell.dataset.column = leafColumn;
+                        
+                        const dataIndex = fixedColumnMapping[leafColumn];
+                        let cellValue = '';
+                        
+                        if (dataIndex !== undefined && rowData[dataIndex] !== undefined) {
+                            cellValue = rowData[dataIndex];
+                            
+                            // Format date columns
+                            if (leafColumn.includes('Date') || leafColumn.includes('Rcpt Date') || leafColumn === 'Date') {
+                                cellValue = formatDate(cellValue);
+                            }
+                        }
+                        
+                        cell.textContent = cellValue;
+                        row.appendChild(cell);
+                    });
+
+                    allDataRows.push(row);
+                    rowCount++;
+                    
+                    // Update progress
+                    if (i % 10 === 0) {
+                        const progress = 50 + Math.round(((i - 2) / (205 - 2)) * 40);
+                        updateProgress(progress, `Processed ${i - 1} rows`);
+                    }
+                }
+
+                setLoadingState(false);
+                updateProgress(100, 'Import complete');
+
+                // Reset filtered data and update table with all data
+                filteredDataRows = [];
+                updateTableWithData(allDataRows);
+                
+                showNotification(`Successfully imported ${rowCount} records from Theft Info file!`);
+                updateImportStatus(`Imported ${rowCount} records`);
+                
+                updateStatusBar();
+            } catch (error) {
+                console.error('Error importing data from Theft Info file:', error);
+                showNotification('Error importing data: ' + error.message, true);
+                updateImportStatus('Import failed');
+                setLoadingState(false);
+            }
+        }
+
+        // Update table with data and apply pagination
+        function updateTableWithData(dataRows) {
+            const tableBody = document.getElementById('table-body');
+            tableBody.innerHTML = '';
+            
+            totalRows = dataRows.length;
+            
+            // Calculate pagination
+            const startIndex = (currentPage - 1) * rowsPerPage;
+            const endIndex = Math.min(startIndex + rowsPerPage, totalRows);
+            
+            // Add rows for current page
+            for (let i = startIndex; i < endIndex; i++) {
+                if (dataRows[i]) {
+                    tableBody.appendChild(dataRows[i].cloneNode(true));
+                }
+            }
+            
+            // Update pagination controls
+            updatePagination();
+            updateStatusBar();
+        }
+
+        // Update pagination controls
+        function updatePagination() {
+            const totalPages = Math.ceil(totalRows / rowsPerPage);
+            const pageNumbersContainer = document.getElementById('page-numbers');
+            pageNumbersContainer.innerHTML = '';
+            
+            // Previous and First buttons
+            document.getElementById('first-page').disabled = currentPage === 1;
+            document.getElementById('prev-page').disabled = currentPage === 1;
+            
+            // Next and Last buttons
+            document.getElementById('next-page').disabled = currentPage === totalPages || totalPages === 0;
+            document.getElementById('last-page').disabled = currentPage === totalPages || totalPages === 0;
+            
+            // Page numbers
+            const maxVisiblePages = 5;
+            let startPage = Math.max(1, currentPage - Math.floor(maxVisiblePages / 2));
+            let endPage = Math.min(totalPages, startPage + maxVisiblePages - 1);
+            
+            // Adjust if we're near the end
+            if (endPage - startPage + 1 < maxVisiblePages) {
+                startPage = Math.max(1, endPage - maxVisiblePages + 1);
+            }
+            
+            for (let i = startPage; i <= endPage; i++) {
+                const pageNumber = document.createElement('div');
+                pageNumber.className = `page-number ${i === currentPage ? 'active' : ''}`;
+                pageNumber.textContent = i;
+                pageNumber.addEventListener('click', () => {
+                    currentPage = i;
+                    const dataToShow = filteredDataRows.length > 0 ? filteredDataRows : allDataRows;
+                    updateTableWithData(dataToShow);
+                });
+                pageNumbersContainer.appendChild(pageNumber);
+            }
+            
+            // Update status
+            const dataToShow = filteredDataRows.length > 0 ? filteredDataRows : allDataRows;
+            document.getElementById('total-rows-count').textContent = `${dataToShow.length} rows${totalPages > 0 ? ` (Page ${currentPage} of ${totalPages})` : ''}`;
+        }
+
+        // Modal functions
+        function openModal() {
+            document.getElementById('column-modal').style.display = 'block';
+            initializeColumnModal();
+        }
+
+        function closeModal() {
+            document.getElementById('column-modal').style.display = 'none';
+        }
+
+        // Event listeners
+        document.getElementById('column-toggle').addEventListener('click', openModal);
+        document.getElementById('apply-columns').addEventListener('click', applyColumnVisibility);
+        document.querySelector('.close').addEventListener('click', closeModal);
+
+        document.getElementById('select-all').addEventListener('click', () => {
+            document.querySelectorAll('#column-list input[type="checkbox"]').forEach(checkbox => {
+                checkbox.checked = true;
+            });
+        });
+
+        document.getElementById('deselect-all').addEventListener('click', () => {
+            document.querySelectorAll('#column-list input[type="checkbox"]').forEach(checkbox => {
+                checkbox.checked = false;
+            });
+        });
+
+        document.getElementById('export-data').addEventListener('click', exportToExcel);
+
+        document.getElementById('import-data').addEventListener('click', () => {
+            importDataFromTheftInfoFile();
+        });
+
+        // Filter event listeners
+        document.getElementById('apply-filter').addEventListener('click', applyFilters);
+        document.getElementById('clear-filter').addEventListener('click', clearFilters);
+
+        // Pagination event listeners
+        document.getElementById('first-page').addEventListener('click', () => {
+            currentPage = 1;
+            const dataToShow = filteredDataRows.length > 0 ? filteredDataRows : allDataRows;
+            updateTableWithData(dataToShow);
+        });
+
+        document.getElementById('prev-page').addEventListener('click', () => {
+            if (currentPage > 1) {
+                currentPage--;
+                const dataToShow = filteredDataRows.length > 0 ? filteredDataRows : allDataRows;
+                updateTableWithData(dataToShow);
+            }
+        });
+
+        document.getElementById('next-page').addEventListener('click', () => {
+            const totalPages = Math.ceil(totalRows / rowsPerPage);
+            if (currentPage < totalPages) {
+                currentPage++;
+                const dataToShow = filteredDataRows.length > 0 ? filteredDataRows : allDataRows;
+                updateTableWithData(dataToShow);
+            }
+        });
+
+        document.getElementById('last-page').addEventListener('click', () => {
+            const totalPages = Math.ceil(totalRows / rowsPerPage);
+            currentPage = totalPages;
+            const dataToShow = filteredDataRows.length > 0 ? filteredDataRows : allDataRows;
+            updateTableWithData(dataToShow);
+        });
+
+        // Rows per page change listener
+        document.getElementById('rows-per-page-select').addEventListener('change', (e) => {
+            rowsPerPage = parseInt(e.target.value);
+            currentPage = 1;
+            const dataToShow = filteredDataRows.length > 0 ? filteredDataRows : allDataRows;
+            updateTableWithData(dataToShow);
+        });
+
+        // Close modal when clicking outside
+        window.addEventListener('click', (event) => {
+            const modal = document.getElementById('column-modal');
+            if (event.target === modal) {
+                closeModal();
+            }
+        });
+
+        // Initialize the application
+        document.addEventListener('DOMContentLoaded', () => {
+            initializeTable();
+        });
+    </script>
+</body>
+</html>
